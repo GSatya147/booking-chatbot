@@ -21,9 +21,11 @@ ASSISTANT_PROMPT = "You are a booking assistant."
 
 CONTEXT: list[dict] = []
 
+
 class DetailsExtractor(BaseModel):
     name: Optional[str] = Field(default=None, description="Name of the user")
     age: Optional[int] = Field(default=None, description="age of the user")
+
 
 current_bookings = DetailsExtractor()
 
@@ -33,6 +35,7 @@ if "CONTEXT" not in st.session_state:
 
 if "current_bookings" not in st.session_state:
     st.session_state.current_bookings = DetailsExtractor()
+
 
 def assistant_call():
     """
@@ -46,15 +49,15 @@ def assistant_call():
             model=os.getenv("MODEL_FAST"),
             api_key=os.getenv("GROQ_API_KEY"),
             messages=temp_conv,
-            stream=True
-            )
+            stream=True,
+        )
 
         for chunk in response:
             if chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
 
     except Exception as e:
-       print("Assistant exception", e)
+        print("Assistant exception", e)
 
 
 def exctrator_call():
@@ -71,14 +74,18 @@ def exctrator_call():
             messages=temp_exct,
             # response_format=DetailsExtractor
             # model_config = ConfigDict(frozen=False)
-            )
-        
+        )
+
         try:
             json_obj = json.loads(response.choices[0].message.content)
 
             global current_bookings
             for field, value in json_obj.items():
-                if value is not None and value != "null" and getattr(current_bookings, field) is None:
+                if (
+                    value is not None
+                    and value != "null"
+                    and getattr(current_bookings, field) is None
+                ):
                     setattr(current_bookings, field, value)
 
         except Exception as e:
@@ -87,7 +94,8 @@ def exctrator_call():
         return current_bookings
 
     except Exception as e:
-       print("Extractor exception: ", e)
+        print("Extractor exception: ", e)
+
 
 CONTEXT = st.session_state.CONTEXT
 current_bookings = st.session_state.current_bookings
@@ -119,6 +127,3 @@ if prompt := st.chat_input("Type here"):
 
     except Exception as e:
         print(e)
-
-
-
