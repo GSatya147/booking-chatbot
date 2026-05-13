@@ -1,20 +1,24 @@
 import os
+import json
 from typing import Optional
 
 from dotenv import load_dotenv
 import litellm
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 load_dotenv()
 
-EXTRACTION_PROMPT = "Extract only the user name from 'user' messages, and return it."
+EXTRACTION_PROMPT = "Extract only the user information from 'user' messages, and return it. RETURN JSON object 'null' for the absent fields STRICTLY."
 
-ASSISTANT_PROMPT = "You are a booking assistant. Give your introduction in 200 words"
+ASSISTANT_PROMPT = "You are a booking assistant."
 
 CONTEXT: list[dict] = []
 
 class DetailsExtractor(BaseModel):
-    name: Optional[str] = Field(description="Name of the user")
+    name: Optional[str] = None
+    age: Optional[int] = None
+
+current_bookings = DetailsExtractor()
 
 def assistant_call():
     """
@@ -44,29 +48,52 @@ def exctrator_call():
     Exctractor: ONLY exctracts the required/relevant fields, pydantic model output
     """
     try:
+        global CONTEXT
         temp_exct = [{"role": "system", "content": EXTRACTION_PROMPT}] + CONTEXT
 
         response = litellm.completion(
             model=os.getenv("MODEL"),
             api_key=os.getenv("GROQ_API_KEY"),
             messages=temp_exct,
+            response_format=DetailsExtractor
             )
+        
+        try:
+            json_obj = json.loads(response.choices[0].message.content)
 
-        return response.choices[0].message.content
+            global current_bookings
+            for field, value in json_obj.items():
+                if value is not None and value != "null" and getattr(current_bookings, field) is None:
+                    setattr(current_bookings, field, value)
+
+        except Exception as e:
+            print(e)
+
+        return current_bookings
 
     except Exception as e:
        print("Extractor exception: ", e)
 
-user_prompt: str = input(">> ")
-CONTEXT: list[dict] = [{"role": "user", "content": user_prompt}]
+while True:
+    try:
+        user_prompt: str = input(">> ")
+        CONTEXT += [{"role": "user", "content": user_prompt}]
 
-assistant_response_string = ""
-for i in assistant_call():
-    if i:
-        assistant_response_string += i
-        print(i, end="")
+        assistant_response_string = ""
+        for i in assistant_call():
+            if i:
+                assistant_response_string += i
+                print(i, end="")
 
-print(exctrator_call())
+        print(f"\n{'-' * 50}")
+        print(exctrator_call())
 
-CONTEXT += [{"role": "assistant", "content": assistant_response_string}]
-print(CONTEXT)
+        CONTEXT += [{"role": "assistant", "content": assistant_response_string}]
+
+    except Exception as e:
+        print(e)
+        break
+
+    except KeyboardInterrupt:
+        break
+
