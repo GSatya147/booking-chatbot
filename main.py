@@ -1,14 +1,15 @@
 import streamlit as st
 
 from src.assistant import assistant_call
-from src.exctractor import exctractor_call
 from src.booking_model import DetailsExtractor
+from src.conversation_manager import ConversationManager
+from src.exctractor import exctractor_call
 
 current_bookings = DetailsExtractor()
 
 # initialise state
-if "CONTEXT" not in st.session_state:
-    st.session_state.CONTEXT = []
+if "conversation_manager" not in st.session_state:
+    st.session_state.conversation_manager = ConversationManager()
 
 if "current_bookings" not in st.session_state:
     st.session_state.current_bookings = DetailsExtractor()

@@ -5,7 +5,7 @@ import litellm
 
 load_dotenv()
 
-ASSISTANT_PROMPT = "You are a booking assistant."
+ASSISTANT_PROMPT: str = "You are a booking assistant."
 
 
 def assistant_call():
