@@ -27,6 +27,13 @@ class DetailsExtractor(BaseModel):
 
 current_bookings = DetailsExtractor()
 
+# initialise state
+if "CONTEXT" not in st.session_state:
+    st.session_state.CONTEXT = []
+
+if "current_bookings" not in st.session_state:
+    st.session_state.current_bookings = DetailsExtractor()
+
 def assistant_call():
     """
     Assistant: Friendly and engages with the user, streaming output
@@ -43,7 +50,7 @@ def assistant_call():
             )
 
         for chunk in response:
-            if chunk:
+            if chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
 
     except Exception as e:
@@ -82,26 +89,36 @@ def exctrator_call():
     except Exception as e:
        print("Extractor exception: ", e)
 
-while True:
+CONTEXT = st.session_state.CONTEXT
+current_bookings = st.session_state.current_bookings
+
+# sidebar - extracted fields
+with st.sidebar:
+    st.json(st.session_state.current_bookings.model_dump())
+
+# render chat history
+for message in st.session_state.CONTEXT:
+    with st.chat_message(message["role"]):
+        st.write(message["content"])
+
+if prompt := st.chat_input("Type here"):
     try:
-        user_prompt: str = input(">> ")
-        CONTEXT += [{"role": "user", "content": user_prompt}]
 
-        assistant_response_string = ""
-        for i in assistant_call():
-            if i:
-                assistant_response_string += i
-                print(i, end="")
+        with st.chat_message("user"):
+            st.write(prompt)
 
-        print(f"\n{'-' * 50}")
-        print(exctrator_call())
+        CONTEXT += [{"role": "user", "content": prompt}]
+
+        with st.chat_message("assistant"):
+            assistant_response_string = st.write_stream(assistant_call())
 
         CONTEXT += [{"role": "assistant", "content": assistant_response_string}]
 
+        st.session_state.current_bookings = exctrator_call()
+        st.rerun()
+
     except Exception as e:
         print(e)
-        break
 
-    except KeyboardInterrupt:
-        break
+
 
