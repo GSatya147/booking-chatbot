@@ -4,19 +4,25 @@ from typing import Optional
 
 from dotenv import load_dotenv
 import litellm
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 load_dotenv()
 
-EXTRACTION_PROMPT = "Extract only the user information from 'user' messages, and return it. RETURN JSON object 'null' for the absent fields STRICTLY."
+EXTRACTION_PROMPT = """
+You are a strict data extractor. Extract ONLY what the user has explicitly stated. Do NOT infer or hallucinate values. Return ONLY a JSON object in this exact format, nothing else:
+
+{"name": null, "age": null}
+
+Replace null with the actual value only if the user explicitly mentioned it.
+"""
 
 ASSISTANT_PROMPT = "You are a booking assistant."
 
 CONTEXT: list[dict] = []
 
 class DetailsExtractor(BaseModel):
-    name: Optional[str] = None
-    age: Optional[int] = None
+    name: Optional[str] = Field(default=None, description="Name of the user")
+    age: Optional[int] = Field(default=None, description="age of the user")
 
 current_bookings = DetailsExtractor()
 
@@ -29,7 +35,7 @@ def assistant_call():
         temp_conv = [{"role": "system", "content": ASSISTANT_PROMPT}] + CONTEXT
 
         response = litellm.completion(
-            model=os.getenv("MODEL"),
+            model=os.getenv("MODEL_FAST"),
             api_key=os.getenv("GROQ_API_KEY"),
             messages=temp_conv,
             stream=True
@@ -52,10 +58,11 @@ def exctrator_call():
         temp_exct = [{"role": "system", "content": EXTRACTION_PROMPT}] + CONTEXT
 
         response = litellm.completion(
-            model=os.getenv("MODEL"),
+            model=os.getenv("MODEL_SMART"),
             api_key=os.getenv("GROQ_API_KEY"),
             messages=temp_exct,
-            response_format=DetailsExtractor
+            # response_format=DetailsExtractor
+            # model_config = ConfigDict(frozen=False)
             )
         
         try:
