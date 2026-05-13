@@ -5,6 +5,7 @@ from typing import Optional
 from dotenv import load_dotenv
 import litellm
 from pydantic import BaseModel, Field
+import streamlit as st
 
 load_dotenv()
 

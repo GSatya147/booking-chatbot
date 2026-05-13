@@ -1,0 +1,4 @@
+litellm==1.83.14
+pydantic==2.12.5
+python-dotenv==1.2.2
+streamlit==1.45.1
